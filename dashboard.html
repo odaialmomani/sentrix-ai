@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — SENTRIX AI</title>
+<link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<div class="app">
+  {% set active='dashboard' %}
+  {% include 'sidebar.html' %}
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <span class="topbar-title">Dashboard</span>
+        <span class="topbar-sub" style="margin-left:8px">Overview</span>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-clock" id="sys-clock">--:--:--</span>
+        <div class="topbar-sep"></div>
+        {% if role == 'Admin' %}
+        <button class="btn btn-success btn-sm" onclick="apiPost('/api/start',{},()=>showToast('System started','IDS/IPS is now active'))">
+          <svg viewBox="0 0 16 16" fill="currentColor"><polygon points="4,2 13,8 4,14"/></svg>Start
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="apiPost('/api/stop',{},()=>showToast('System stopped','IDS/IPS paused'))">
+          <svg viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="4" height="10" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/></svg>Stop
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="content">
+      <div id="toast" class="toast"><div class="t-row"><span class="t-icon">✅</span><div><div class="t-title"></div><div class="t-sub"></div></div></div></div>
+
+      <!-- Metrics -->
+      <div class="metrics">
+        <div class="mc blue">
+          <div class="mc-top">
+            <div class="mc-ico blue">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><polyline points="8,5 8,8 10,10"/></svg>
+            </div>
+            <span class="bdg bdg-blue" style="font-size:10px">TOTAL</span>
+          </div>
+          <div class="mc-num" id="m-total">{{ stats.total }}</div>
+          <div class="mc-label">Messages Analyzed</div>
+        </div>
+        <div class="mc green">
+          <div class="mc-top">
+            <div class="mc-ico green">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2,9 6,13 14,5"/></svg>
+            </div>
+            <span class="bdg bdg-green" style="font-size:10px">SAFE</span>
+          </div>
+          <div class="mc-num" id="m-normal">{{ stats.normal }}</div>
+          <div class="mc-label">Normal Traffic</div>
+        </div>
+        <div class="mc red">
+          <div class="mc-top">
+            <div class="mc-ico red">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2L15 13H1Z"/><line x1="8" y1="7" x2="8" y2="10"/><circle cx="8" cy="12" r=".5" fill="currentColor"/></svg>
+            </div>
+            <span class="bdg bdg-red" style="font-size:10px">DoS</span>
+          </div>
+          <div class="mc-num" id="m-dos">{{ stats.dos }}</div>
+          <div class="mc-label">DoS Attacks</div>
+        </div>
+        <div class="mc amber">
+          <div class="mc-top">
+            <div class="mc-ico amber">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2 C4 6 2.5 10 8 14 C13.5 10 12 6 8 2Z"/></svg>
+            </div>
+            <span class="bdg bdg-amber" style="font-size:10px">FUZZY</span>
+          </div>
+          <div class="mc-num" id="m-fuzzy">{{ stats.fuzzy }}</div>
+          <div class="mc-label">Fuzzy Attacks</div>
+        </div>
+      </div>
+
+      <!-- Status bar -->
+      <div id="status-bar" class="sbar {{ 'atk' if latest.attack != 'Normal' else 'ok' }}">
+        <div class="sbar-dot {{ 'atk' if latest.attack != 'Normal' else 'ok' }}" id="sbar-dot"></div>
+        <div>
+          <div class="sbar-txt" id="sbar-txt">{{ latest.attack if latest.attack != 'Normal' else 'All Systems Normal' }}</div>
+          <div class="sbar-sub" id="sbar-sub">IPS: {{ latest.ips_status }}</div>
+        </div>
+        <div class="sbar-kv">
+          <div class="kv"><label>CAN ID</label><span class="mono" id="m-canid">{{ latest.can_id }}</span></div>
+          <div class="kv"><label>Detection</label><span style="color:var(--cyan)" id="m-det">{{ latest.detection_time }}ms</span></div>
+          <div class="kv"><label>Updated</label><span id="m-time">{{ latest.time }}</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- ML Prediction -->
+        <div class="card">
+          <div class="card-hd"><span class="card-title">ML Prediction</span></div>
+          <div class="card-body">
+            <div class="ir"><span class="ir-l">Real Label</span><span class="ir-r" id="m-real">{{ latest.real_label }}</span></div>
+            <div class="ir"><span class="ir-l">ML Predicted</span><span style="color:var(--blue2);font-weight:500" id="m-ml">{{ latest.ml_label }}</span></div>
+            <div class="ir"><span class="ir-l">IPS Status</span><span class="ir-r" id="m-ips">{{ latest.ips_status }}</span></div>
+            <div class="ir"><span class="ir-l">System</span>
+              <span>{% if running %}<span class="bdg bdg-green">Running</span>{% else %}<span class="bdg bdg-gray">Stopped</span>{% endif %}</span>
+            </div>
+            <div class="ir"><span class="ir-l">Attacks Blocked</span><span style="color:var(--red);font-weight:600" id="m-blocked">{{ stats.blocked }}</span></div>
+          </div>
+        </div>
+
+        <!-- ML Performance -->
+        <div class="card">
+          <div class="card-hd"><span class="card-title">ML Performance</span><span class="bdg bdg-blue">Random Forest</span></div>
+          <div class="card-body">
+            <div style="text-align:center;margin:8px 0 16px">
+              <div style="font-size:44px;font-weight:700;color:var(--white);font-family:'IBM Plex Mono',monospace;line-height:1" id="m-acc">
+                {% if stats.total > 0 %}{{ accuracy }}%{% else %}0%{% endif %}
+              </div>
+              <div style="font-size:10px;color:var(--txt2);margin-top:6px;text-transform:uppercase;letter-spacing:.8px">Overall Accuracy</div>
+            </div>
+            <div class="prog"><div class="prog-fill" id="acc-bar" style="width:{{ accuracy }}%;background:linear-gradient(90deg,var(--blue),var(--purple))"></div></div>
+            <div class="ir"><span class="ir-l">Correct Predictions</span><span style="color:var(--green)" id="m-correct">{{ stats.correct }}</span></div>
+            <div class="ir"><span class="ir-l">Training Samples</span><span class="ir-r">150,000</span></div>
+            <div class="ir"><span class="ir-l">Dataset</span><span class="ir-r">Car Hacking (OTIDS)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick nav -->
+      <div class="card">
+        <div class="card-hd"><span class="card-title">Quick Actions</span></div>
+        <div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap">
+          <a href="/monitor"   class="btn btn-ghost">Live Monitor</a>
+          <a href="/logs"      class="btn btn-ghost">Attack Logs</a>
+          <a href="/analytics" class="btn btn-ghost">Analytics</a>
+          {% if role=='Admin' %}<a href="/admin" class="btn btn-ghost">Admin Panel</a>{% endif %}
+          <a href="/about"     class="btn btn-ghost">About</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/static/js/main.js"></script>
+</body>
+</html>

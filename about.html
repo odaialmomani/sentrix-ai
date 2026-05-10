@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>About — SENTRIX AI</title>
+<link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<div class="app">
+  {% set active='about' %}
+  {% include 'sidebar.html' %}
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title">About SENTRIX AI</span>
+      <div class="topbar-right"><span class="topbar-clock" id="sys-clock">--:--:--</span></div>
+    </div>
+    <div class="content">
+      <div id="toast" class="toast"><div class="t-row"><span class="t-icon">✅</span><div><div class="t-title"></div><div class="t-sub"></div></div></div></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Project Information</span></div>
+          <div class="card-body">
+            <div class="ir"><span class="ir-l">Platform</span><span style="font-weight:600;color:var(--white)">SENTRIX AI</span></div>
+            <div class="ir"><span class="ir-l">Full Name</span><span class="ir-r">CAN Bus IDS/IPS System</span></div>
+            <div class="ir"><span class="ir-l">Algorithm</span><span><span class="bdg bdg-blue">Random Forest</span></span></div>
+            <div class="ir"><span class="ir-l">Dataset</span><span class="ir-r">Car Hacking Dataset (OTIDS)</span></div>
+            <div class="ir"><span class="ir-l">Training Samples</span><span class="ir-r">150,000 CAN messages</span></div>
+            <div class="ir"><span class="ir-l">Simulation</span><span class="ir-r">CARLA Autonomous Simulator</span></div>
+            <div class="ir"><span class="ir-l">Supervisor</span><span style="color:var(--blue2);font-weight:600">Dr. Musab Al-Ghadi</span></div>
+            <div class="ir"><span class="ir-l">Technical Support</span><span class="ir-mono">+96786040576</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Development Team</span></div>
+          <div class="card-body">
+            <div class="team-grid">
+              {% set team = [
+                ('OT','Odai Thaer','Lead Developer'),
+                ('LS','Lotus Sharrab','Team Member'),
+                ('SJ','Shahed Jamoul','Team Member'),
+                ('MS','Maria Sahawneh','Team Member'),
+                ('AA','Aseel Abokhader','Team Member')
+              ] %}
+              {% for i,n,r in team %}
+              <div class="team-card">
+                <div class="t-av">{{ i }}</div>
+                <div><div class="t-name">{{ n }}</div><div class="t-role">{{ r }}</div></div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><span class="card-title">Attack Reference</span></div>
+        <div class="card-body">
+          <div class="grid-2">
+            <div style="padding:14px;background:var(--bg4);border:1px solid rgba(244,63,94,.18);border-radius:var(--r6)">
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+                <span class="bdg bdg-red">DoS Attack</span>
+                <span class="bdg bdg-purple">Critical</span>
+              </div>
+              <div style="font-size:12px;color:var(--txt2);line-height:1.7;margin-bottom:10px">
+                Floods CAN Bus with 0x000 messages at maximum rate, overwhelming all ECUs and halting vehicle communication.
+              </div>
+              <div style="padding:8px;background:rgba(34,197,94,.06);border-radius:var(--r4);border:1px solid rgba(34,197,94,.12)">
+                <div style="font-size:10px;color:var(--green);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">IPS Response</div>
+                <div style="font-size:11px;color:var(--txt2)">Blocks 0x000 messages instantly — restores normal CAN Bus traffic.</div>
+              </div>
+            </div>
+            <div style="padding:14px;background:var(--bg4);border:1px solid rgba(245,158,11,.18);border-radius:var(--r6)">
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+                <span class="bdg bdg-amber">Fuzzy Attack</span>
+                <span class="bdg bdg-red">High</span>
+              </div>
+              <div style="font-size:12px;color:var(--txt2);line-height:1.7;margin-bottom:10px">
+                Injects random CAN messages with arbitrary IDs, confusing ECUs and causing unpredictable vehicle behavior.
+              </div>
+              <div style="padding:8px;background:rgba(34,197,94,.06);border-radius:var(--r4);border:1px solid rgba(34,197,94,.12)">
+                <div style="font-size:10px;color:var(--green);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px">IPS Response</div>
+                <div style="font-size:11px;color:var(--txt2)">Filters invalid CAN IDs — validates all messages before ECU delivery.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><span class="card-title">Research & References</span></div>
+        <div class="card-body">
+          <a class="art" href="https://ocslab.hksecurity.net/Datasets/CAN-intrusion-dataset" target="_blank">
+            <div class="art-title">Car Hacking Dataset — OTIDS Lab</div>
+            <div class="art-desc">Official dataset used in this project — 150,000 real CAN Bus messages (Normal, DoS, Fuzzy attacks)</div>
+          </a>
+          <a class="art" href="https://ieeexplore.ieee.org/document/8057008" target="_blank">
+            <div class="art-title">Intrusion Detection for In-Vehicle CAN Bus — IEEE PLOS ONE</div>
+            <div class="art-desc">Foundational paper introducing the Car Hacking Dataset and CAN Bus attack classification</div>
+          </a>
+          <a class="art" href="https://scikit-learn.org/stable/modules/ensemble.html#random-forests" target="_blank">
+            <div class="art-title">Random Forest Classifier — Scikit-Learn Documentation</div>
+            <div class="art-desc">Official documentation for the ensemble ML algorithm powering this IDS engine</div>
+          </a>
+          <a class="art" href="https://carla.org" target="_blank">
+            <div class="art-title">CARLA Open Autonomous Driving Simulator</div>
+            <div class="art-desc">Simulation environment used to demonstrate real-world CAN Bus attack scenarios</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/static/js/main.js"></script>
+</body>
+</html>

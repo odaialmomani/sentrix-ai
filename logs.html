@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Logs — SENTRIX AI</title>
+<link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<div class="app">
+  {% set active='logs' %}
+  {% set log_count=logs|length %}
+  {% include 'sidebar.html' %}
+
+  <!-- Detail Panel -->
+  <div class="detail-panel" id="detail-panel">
+    <div class="dp-hd">
+      <span class="dp-title">Event Analysis</span>
+      <button class="dp-close" onclick="closeDetail()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/>
+        </svg>
+      </button>
+    </div>
+    <div class="dp-body">
+
+      <div class="dp-section">
+        <div class="dp-section-title">Event Overview</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <span class="bdg bdg-red" id="dp-sev-badge">Critical</span>
+          <span style="font-size:11px;color:var(--txt2)" id="dp-time">--:--:--</span>
+        </div>
+        <div class="dp-field">
+          <label>Attack Type</label>
+          <div class="dp-val" id="dp-type">—</div>
+        </div>
+        <div class="dp-field">
+          <label>CAN ID</label>
+          <div class="dp-mono" id="dp-canid">—</div>
+        </div>
+        <div class="dp-field">
+          <label>Detection Time</label>
+          <div class="dp-val" id="dp-det">—</div>
+        </div>
+        <div class="dp-field">
+          <label>Real Label</label>
+          <div class="dp-val" id="dp-real">—</div>
+        </div>
+        <div class="dp-field">
+          <label>Severity</label>
+          <div class="dp-val" id="dp-sev">—</div>
+        </div>
+        <div class="dp-field">
+          <label>IPS Action</label>
+          <div class="dp-val" id="dp-action">—</div>
+        </div>
+      </div>
+
+      <div class="dp-section">
+        <div class="dp-section-title">Attack Timeline</div>
+        <div class="dp-timeline" id="dp-analysis">
+          <div class="dp-event-txt" style="color:var(--txt2)">Select an event to analyze</div>
+        </div>
+      </div>
+
+      <div class="dp-section">
+        <div class="dp-section-title">Recommended Response</div>
+        <div style="padding:10px;background:var(--bg4);border-radius:var(--r6);border:1px solid var(--line);font-size:12px;color:var(--txt2);line-height:1.7">
+          Review attack pattern in Analytics. Verify IPS blocked successfully.
+          If attacks persist, consider updating ML model with new signatures.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <span class="topbar-title">Attack Logs</span>
+        <span class="topbar-sub" style="margin-left:8px">SIEM Event Viewer</span>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-clock" id="sys-clock">--:--:--</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div id="toast" class="toast"><div class="t-row"><span class="t-icon">🚨</span><div><div class="t-title"></div><div class="t-sub"></div></div></div></div>
+
+      <div class="card" style="margin-bottom:0;border-radius:var(--r8) var(--r8) 0 0">
+        <div class="filter-bar">
+          <div class="search-box">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
+            </svg>
+            <input type="text" placeholder="Search events…" oninput="filterLogs(this.value)">
+          </div>
+
+          <select class="filter-select" onchange="filterByType(this.value)">
+            <option value="all">All Types</option>
+            <option value="DoS">DoS</option>
+            <option value="Fuzzy">Fuzzy</option>
+          </select>
+
+          <select class="filter-select" onchange="filterBySev(this.value)">
+            <option value="all">All Severity</option>
+            <option value="Critical">Critical</option>
+            <option value="High">High</option>
+          </select>
+
+          <button class="btn btn-ghost btn-sm" onclick="exportCSV()">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:13px;height:13px">
+              <path d="M8 2v8M5 7l3 3 3-3M3 13h10"/>
+            </svg>
+            Export CSV
+          </button>
+
+          <span class="filter-count" id="log-count">{{ logs|length }} events</span>
+        </div>
+      </div>
+
+      <div class="card" style="border-top:none;border-radius:0 0 var(--r8) var(--r8);padding:0;overflow:hidden">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>Timestamp</th>
+                <th>Attack Type</th>
+                <th>CAN ID</th>
+                <th>Severity</th>
+                <th>ML Detection</th>
+                <th>Latency</th>
+                <th>Action</th>
+                <th style="width:60px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if logs %}
+                {% for log in logs %}
+                <tr class="log-row" data-type="{{ log.type }}" data-sev="{{ log.severity }}"
+                    onclick="openDetail({{ loop.index0 }})" style="cursor:pointer">
+                  <td class="mono" style="color:var(--txt2)">{{ loop.index }}</td>
+                  <td class="mono" style="color:var(--txt2)">{{ log.time }}</td>
+                  <td>
+                    <span class="bdg {{ 'bdg-red' if log.type=='DoS' else 'bdg-amber' }}">
+                      {{ log.type }}
+                    </span>
+                  </td>
+                  <td class="mono" style="color:var(--cyan)">{{ log.can_id }}</td>
+                  <td>
+                    <span class="bdg {{ 'bdg-purple' if log.severity=='Critical' else 'bdg-red' }}">
+                      {{ log.severity }}
+                    </span>
+                  </td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <div style="width:6px;height:6px;border-radius:50%;background:{{ '#f43f5e' if log.type!=log.real else '#22c55e' }};flex-shrink:0"></div>
+                      <span style="font-size:11px;color:var(--txt2)">{{ log.real }}</span>
+                    </div>
+                  </td>
+                  <td class="mono" style="color:var(--cyan)">{{ log.detection_time }}ms</td>
+                  <td><span class="bdg bdg-red">BLOCKED</span></td>
+                  <td>
+                    <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openDetail({{ loop.index0 }})">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:12px;height:12px">
+                        <circle cx="8" cy="8" r="6"/><line x1="8" y1="7" x2="8" y2="11"/><circle cx="8" cy="5" r=".5" fill="currentColor"/>
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="9" style="text-align:center;padding:56px;color:var(--txt2)">
+                    <div style="font-size:28px;margin-bottom:10px">🛡️</div>
+                    <div style="font-size:13px">No attack events recorded</div>
+                    <div style="font-size:11px;margin-top:4px;color:var(--txt2)">Start the system to begin monitoring</div>
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/main.js"></script>
+<script>
+// Pass log data to JS for detail panel
+const LOG_DATA = [
+  {% for log in logs %}
+  {
+    type:           "{{ log.type }}",
+    can_id:         "{{ log.can_id }}",
+    time:           "{{ log.time }}",
+    detection_time: {{ log.detection_time }},
+    real:           "{{ log.real }}",
+    severity:       "{{ log.severity }}",
+    action:         "{{ log.action }}"
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+setLogData(LOG_DATA);
+</script>
+</body>
+</html>

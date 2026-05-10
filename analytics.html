@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analytics — SENTRIX AI</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</head>
+<body>
+<div class="app">
+  {% set active='analytics' %}
+  {% include 'sidebar.html' %}
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title">Analytics</span>
+      <div class="topbar-right"><span class="topbar-clock" id="sys-clock">--:--:--</span></div>
+    </div>
+    <div class="content">
+      <div id="toast" class="toast"><div class="t-row"><span class="t-icon">🚨</span><div><div class="t-title"></div><div class="t-sub"></div></div></div></div>
+
+      <div class="metrics">
+        <div class="mc blue"><div class="mc-num" id="m-total">{{ stats.total }}</div><div class="mc-label">Total Analyzed</div></div>
+        <div class="mc red"><div class="mc-num" style="color:var(--red)" id="m-blocked">{{ stats.blocked }}</div><div class="mc-label">Total Blocked</div></div>
+        <div class="mc green"><div class="mc-num" style="color:var(--purple)" id="m-acc">{{ accuracy }}%</div><div class="mc-label">ML Accuracy</div></div>
+        <div class="mc amber"><div class="mc-num" style="color:var(--cyan)" id="m-det">{{ latest.detection_time }}ms</div><div class="mc-label">Last Latency</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Traffic Distribution</span></div>
+          <div class="card-body">
+            <div style="position:relative;height:200px"><canvas id="pieChart"></canvas></div>
+            <div style="display:flex;justify-content:center;gap:16px;margin-top:12px;font-size:11px">
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:#22c55e;display:inline-block"></span>Normal</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:#f43f5e;display:inline-block"></span>DoS</span>
+              <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:#f59e0b;display:inline-block"></span>Fuzzy</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Attack Count</span></div>
+          <div class="card-body"><div style="position:relative;height:200px"><canvas id="barChart"></canvas></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><span class="card-title">Detection Timeline</span></div>
+        <div class="card-body"><div style="position:relative;height:180px"><canvas id="timeChart"></canvas></div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Traffic Rates</span></div>
+          <div class="card-body">
+            {% set t = [stats.total,1]|max %}
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Normal</span><span style="color:var(--green)">{{ (stats.normal/t*100)|round(1) }}%</span></div>
+            <div class="prog"><div class="prog-fill" style="width:{{ (stats.normal/t*100)|round(1) }}%;background:var(--green)"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>DoS</span><span style="color:var(--red)">{{ (stats.dos/t*100)|round(1) }}%</span></div>
+            <div class="prog"><div class="prog-fill" style="width:{{ (stats.dos/t*100)|round(1) }}%;background:var(--red)"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>Fuzzy</span><span style="color:var(--amber)">{{ (stats.fuzzy/t*100)|round(1) }}%</span></div>
+            <div class="prog"><div class="prog-fill" style="width:{{ (stats.fuzzy/t*100)|round(1) }}%;background:var(--amber)"></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Model Info</span></div>
+          <div class="card-body">
+            <div class="ir"><span class="ir-l">Algorithm</span><span class="bdg bdg-blue">Random Forest</span></div>
+            <div class="ir"><span class="ir-l">Training Data</span><span class="ir-r">150,000 messages</span></div>
+            <div class="ir"><span class="ir-l">Features</span><span style="font-size:11px;color:var(--txt2)">CAN_ID, DLC, D0–D7</span></div>
+            <div class="ir"><span class="ir-l">Accuracy</span><span style="color:var(--purple);font-weight:600" id="m-acc2">{{ accuracy }}%</span></div>
+            <div class="ir"><span class="ir-l">Dataset</span><span style="font-size:11px;color:var(--txt2)">OTIDS Car Hacking</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/static/js/main.js"></script>
+<script>
+const G = { color:'rgba(255,255,255,.05)', tick:'#64748b' };
+const baseOpts = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} } };
+
+new Chart(document.getElementById('pieChart'), {
+  type:'doughnut',
+  data:{ labels:['Normal','DoS','Fuzzy'], datasets:[{ data:[{{ stats.normal }},{{ stats.dos }},{{ stats.fuzzy }}], backgroundColor:['#22c55e','#f43f5e','#f59e0b'], borderWidth:2, borderColor:'#0c0f1a' }] },
+  options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, cutout:'68%' }
+});
+
+new Chart(document.getElementById('barChart'), {
+  type:'bar',
+  data:{ labels:['Normal','DoS','Fuzzy'], datasets:[{ data:[{{ stats.normal }},{{ stats.dos }},{{ stats.fuzzy }}], backgroundColor:['rgba(34,197,94,.7)','rgba(244,63,94,.7)','rgba(245,158,11,.7)'], borderRadius:5, borderSkipped:false }] },
+  options:{ ...baseOpts, scales:{ x:{ticks:{color:G.tick},grid:{color:G.color}}, y:{ticks:{color:G.tick},grid:{color:G.color},beginAtZero:true} } }
+});
+
+const tl = [{% for l in logs %}'{{ l.time }}'{% if not loop.last %},{% endif %}{% endfor %}];
+const td = [{% for l in logs %}{{ 2 if l.type=='DoS' else 1 }}{% if not loop.last %},{% endif %}{% endfor %}];
+new Chart(document.getElementById('timeChart'), {
+  type:'line',
+  data:{ labels:tl.length?tl:['No data'], datasets:[{ data:td.length?td:[0], borderColor:'#f43f5e', backgroundColor:'rgba(244,63,94,.07)', fill:true, tension:.4, pointRadius:4, pointBackgroundColor:'#f43f5e', pointBorderColor:'#0c0f1a', pointBorderWidth:2 }] },
+  options:{ ...baseOpts, scales:{ x:{ticks:{color:G.tick,maxTicksLimit:10},grid:{color:G.color}}, y:{min:0,max:2.5,ticks:{color:G.tick,callback:v=>v===0?'Normal':v===1?'Fuzzy':v===2?'DoS':''},grid:{color:G.color}} } }
+});
+</script>
+</body>
+</html>
