@@ -21,6 +21,7 @@ latest_data = {
 }
 stats = {"total": 0, "normal": 0, "dos": 0, "fuzzy": 0, "correct": 0, "blocked": 0}
 attack_log = []
+traffic_log = []
 det_times  = []
 
 def sev(t):
@@ -72,9 +73,12 @@ SAMPLES = [
 ]
 
 def run_auto_ml():
-    global latest_data, stats, attack_log, det_times
+    global latest_data, stats, attack_log, traffic_log, det_times
     i = 0
     while True:
+        if not system_running["status"]:
+            _time.sleep(1)
+            continue
         try:
             row  = SAMPLES[i % len(SAMPLES)]
             pred = row["label"]
@@ -88,8 +92,19 @@ def run_auto_ml():
             if pred == "Normal":   stats["normal"]  += 1
             elif pred == "DoS":    stats["dos"]     += 1
             elif pred == "Fuzzy":  stats["fuzzy"]   += 1
-
             stats["correct"] += 1
+
+            # Add to traffic log (keep last 100)
+            traffic_log.append({
+                "time": ts,
+                "can_id": cid,
+                "type": pred,
+                "detection_time": det,
+                "action": "BLOCKED" if pred != "Normal" else "ALLOW",
+                "severity": sev(pred) if pred != "Normal" else "None"
+            })
+            if len(traffic_log) > 100:
+                traffic_log.pop(0)
 
             if pred != "Normal":
                 stats["blocked"] += 1
@@ -104,14 +119,12 @@ def run_auto_ml():
                     "ips_status": "BLOCKED", "real_label": pred, "ml_label": pred,
                     "detection_time": det, "severity": s
                 }
-                print(f"[{ts}] ATTACK: {pred} | {cid} | {det}ms")
             else:
                 latest_data = {
                     "attack": "Normal", "can_id": cid, "time": ts,
                     "ips_status": "ALLOW", "real_label": pred, "ml_label": pred,
                     "detection_time": det, "severity": "None"
                 }
-                print(f"[{ts}] Normal | {cid} | {det}ms")
 
         except Exception as e:
             print(f"Simulator error: {e}")
@@ -166,6 +179,12 @@ def analytics():
     return render_template("analytics.html", **ctx(), stats=stats,
                            logs=attack_log, accuracy=acc, latest=latest_data)
 
+@app.route("/traffic")
+@auth
+def traffic():
+    return render_template("traffic.html", **ctx(),
+                           traffic=list(reversed(traffic_log)))
+
 @app.route("/admin")
 @admin_only
 def admin():
@@ -184,6 +203,11 @@ def api_status():
     return jsonify({**latest_data, **stats, "accuracy": acc,
                     "running": system_running["status"]})
 
+@app.route("/api/traffic")
+@auth
+def api_traffic():
+    return jsonify(list(reversed(traffic_log[-50:])))
+
 @app.route("/api/start", methods=["POST"])
 @admin_only
 def api_start():
@@ -199,9 +223,9 @@ def api_stop():
 @app.route("/api/reset", methods=["POST"])
 @admin_only
 def api_reset():
-    global attack_log, det_times
+    global attack_log, det_times, traffic_log
     stats.update(total=0, normal=0, dos=0, fuzzy=0, correct=0, blocked=0)
-    attack_log, det_times = [], []
+    attack_log, det_times, traffic_log = [], [], []
     latest_data.update(attack="Normal", can_id="--", time="--:--:--",
                        ips_status="Monitoring", real_label="-", ml_label="-",
                        detection_time=0, severity="None")
@@ -215,6 +239,8 @@ def api_simulate():
     s  = sev(t)
     attack_log.append({"time": ts, "type": t, "can_id": "0x000",
                        "detection_time": 5, "real": t, "severity": s, "action": "BLOCKED"})
+    traffic_log.append({"time": ts, "can_id": "0x000", "type": t,
+                        "detection_time": 5, "action": "BLOCKED", "severity": s})
     if t == "DoS":     stats["dos"]   += 1
     elif t == "Fuzzy": stats["fuzzy"] += 1
     stats["total"] += 1
@@ -226,7 +252,7 @@ def api_simulate():
 
 @app.route("/api/update", methods=["POST"])
 def api_update():
-    global latest_data, stats, attack_log, det_times
+    global latest_data, stats, attack_log, traffic_log, det_times
     d   = request.json
     ml  = d.get("ml_pred", "Normal")
     rl  = d.get("real_label", "Normal")
@@ -239,6 +265,11 @@ def api_update():
     elif ml == "DoS":   stats["dos"]     += 1
     elif ml == "Fuzzy": stats["fuzzy"]   += 1
     if ml == rl:        stats["correct"] += 1
+    traffic_log.append({"time": ts, "can_id": str(cid), "type": ml,
+                        "detection_time": det, "action": "BLOCKED" if ml != "Normal" else "ALLOW",
+                        "severity": sev(ml) if ml != "Normal" else "None"})
+    if len(traffic_log) > 100:
+        traffic_log.pop(0)
     if ml != "Normal":
         stats["blocked"] += 1
         s = sev(ml)
