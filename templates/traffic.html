@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Traffic — SENTRIX AI</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+.traffic-stats {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-bottom:12px;
+}
+.ts-card {
+  background:var(--bg3);
+  border:1px solid var(--line);
+  border-radius:var(--r8);
+  padding:12px 14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.ts-dot {
+  width:8px;height:8px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+.ts-num   { font-size:22px;font-weight:700;color:var(--white);font-family:'IBM Plex Mono',monospace; }
+.ts-label { font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;margin-top:2px; }
+
+.live-badge {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:999px;
+  background:rgba(34,197,94,.12);
+  border:1px solid rgba(34,197,94,.2);
+  font-size:11px;color:var(--green);font-weight:600;
+}
+.live-dot {
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);
+  animation:liveBlink 1s ease-in-out infinite;
+}
+@keyframes liveBlink { 0%,100%{opacity:1}50%{opacity:.2} }
+
+.tr-normal { background:transparent; }
+.tr-dos    { background:rgba(244,63,94,.04); }
+.tr-fuzzy  { background:rgba(245,158,11,.04); }
+.tr-attack-new { animation:rowFlash .6s ease; }
+@keyframes rowFlash { 0%{background:rgba(244,63,94,.15)} 100%{background:rgba(244,63,94,.04)} }
+
+.chart-wrap {
+  background:var(--bg3);
+  border:1px solid var(--line);
+  border-radius:var(--r8);
+  padding:16px;
+  margin-bottom:12px;
+}
+.chart-hd {
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:12px;
+}
+.chart-title { font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.8px; }
+
+.pause-btn {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:var(--r4);
+  background:transparent;border:1px solid var(--line2);
+  color:var(--txt2);font-size:11px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .15s;
+}
+.pause-btn:hover { background:rgba(255,255,255,.05);color:var(--txt); }
+.pause-btn.paused { background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:var(--amber); }
+
+.rate-bar {
+  height:3px;background:var(--bg5);border-radius:999px;
+  overflow:hidden;margin-top:8px;
+}
+.rate-fill {
+  height:3px;border-radius:999px;
+  transition:width .5s ease;
+  background:linear-gradient(90deg,var(--blue),var(--cyan));
+}
+
+.empty-state {
+  text-align:center;padding:60px 20px;
+}
+.empty-icon { font-size:36px;margin-bottom:12px; }
+.empty-txt  { font-size:13px;color:var(--txt2); }
+.empty-sub  { font-size:11px;color:var(--txt2);margin-top:4px;opacity:.6; }
+</style>
+</head>
+<body>
+<div class="app">
+  {% set active='traffic' %}
+  {% include 'sidebar.html' %}
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="topbar-title">CAN Traffic</span>
+        <span class="live-badge"><span class="live-dot"></span>Live</span>
+      </div>
+      <div class="topbar-right">
+        <span style="font-size:11px;color:var(--txt2)" id="msg-rate">0 msg/min</span>
+        <div class="topbar-sep"></div>
+        <span class="topbar-clock" id="sys-clock">--:--:--</span>
+      </div>
+    </div>
+
+    <div class="content">
+      <div id="toast" class="toast">
+        <div class="t-row"><span class="t-icon">🚨</span>
+        <div><div class="t-title"></div><div class="t-sub"></div></div></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="traffic-stats">
+        <div class="ts-card">
+          <div>
+            <div class="ts-num" id="t-total">0</div>
+            <div class="ts-label">Total Messages</div>
+            <div class="rate-bar"><div class="rate-fill" id="t-total-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <div class="ts-card">
+          <div>
+            <div class="ts-num" style="color:var(--green)" id="t-normal">0</div>
+            <div class="ts-label">Normal</div>
+            <div class="rate-bar"><div class="rate-fill" id="t-normal-bar" style="width:0%;background:var(--green)"></div></div>
+          </div>
+        </div>
+        <div class="ts-card">
+          <div>
+            <div class="ts-num" style="color:var(--red)" id="t-dos">0</div>
+            <div class="ts-label">DoS</div>
+            <div class="rate-bar"><div class="rate-fill" id="t-dos-bar" style="width:0%;background:var(--red)"></div></div>
+          </div>
+        </div>
+        <div class="ts-card">
+          <div>
+            <div class="ts-num" style="color:var(--amber)" id="t-fuzzy">0</div>
+            <div class="ts-label">Fuzzy</div>
+            <div class="rate-bar"><div class="rate-fill" id="t-fuzzy-bar" style="width:0%;background:var(--amber)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart -->
+      <div class="chart-wrap">
+        <div class="chart-hd">
+          <span class="chart-title">Traffic Flow — Last 30 Messages</span>
+          <div style="display:flex;gap:12px;font-size:11px;color:var(--txt2)">
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#22c55e;display:inline-block"></span>Normal</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#f43f5e;display:inline-block"></span>DoS</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#f59e0b;display:inline-block"></span>Fuzzy</span>
+          </div>
+        </div>
+        <div style="position:relative;height:140px">
+          <canvas id="trafficChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Filter + Table -->
+      <div class="card" style="margin-bottom:0;border-radius:var(--r8) var(--r8) 0 0;padding:0">
+        <div class="filter-bar">
+          <div class="search-box">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
+            </svg>
+            <input type="text" placeholder="Search by CAN ID or type…" oninput="filterRows(this.value)">
+          </div>
+          <select class="filter-select" onchange="filterByType(this.value)">
+            <option value="all">All Types</option>
+            <option value="Normal">Normal</option>
+            <option value="DoS">DoS</option>
+            <option value="Fuzzy">Fuzzy</option>
+          </select>
+          <button class="pause-btn" id="pause-btn" onclick="togglePause()">
+            <svg viewBox="0 0 16 16" fill="currentColor" style="width:11px;height:11px" id="pause-icon">
+              <rect x="3" y="3" width="4" height="10" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/>
+            </svg>
+            <span id="pause-txt">Pause</span>
+          </button>
+          <span class="filter-count" id="log-count">0 messages</span>
+        </div>
+      </div>
+
+      <div class="card" style="border-top:none;border-radius:0 0 var(--r8) var(--r8);padding:0;overflow:hidden;max-height:420px;overflow-y:auto" id="table-wrap">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>Timestamp</th>
+                <th>CAN ID</th>
+                <th>Type</th>
+                <th>Latency</th>
+                <th>IPS Action</th>
+                <th>Severity</th>
+              </tr>
+            </thead>
+            <tbody id="traffic-body">
+              <tr>
+                <td colspan="7">
+                  <div class="empty-state">
+                    <div class="empty-icon">📡</div>
+                    <div class="empty-txt">Waiting for traffic…</div>
+                    <div class="empty-sub">Messages will appear here in real-time</div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/main.js"></script>
+<script>
+let trafficData = [];
+let isPaused    = false;
+let filterVal   = 'all';
+let searchVal   = '';
+let msgCount    = 0;
+let msgPerMin   = 0;
+let lastMinData = [];
+
+// ── Chart setup ────────────────────────────────
+const ctx = document.getElementById('trafficChart').getContext('2d');
+const chartLabels = [];
+const chartData   = { normal:[], dos:[], fuzzy:[] };
+
+const trafficChart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: chartLabels,
+    datasets: [
+      { label:'Normal', data:chartData.normal, backgroundColor:'rgba(34,197,94,.7)',  borderRadius:3, borderSkipped:false },
+      { label:'DoS',    data:chartData.dos,    backgroundColor:'rgba(244,63,94,.7)', borderRadius:3, borderSkipped:false },
+      { label:'Fuzzy',  data:chartData.fuzzy,  backgroundColor:'rgba(245,158,11,.7)',borderRadius:3, borderSkipped:false },
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false} },
+    scales: {
+      x:{ stacked:true, ticks:{color:'#64748b',maxTicksLimit:10,font:{size:10}}, grid:{color:'rgba(255,255,255,.04)'} },
+      y:{ stacked:true, ticks:{color:'#64748b',stepSize:1}, grid:{color:'rgba(255,255,255,.04)'}, beginAtZero:true }
+    },
+    animation:{ duration:300 }
+  }
+});
+
+function updateChart(type, ts) {
+  const label = ts.slice(0,5);
+  const last  = chartLabels[chartLabels.length-1];
+  if (last !== label) {
+    chartLabels.push(label);
+    chartData.normal.push(0);
+    chartData.dos.push(0);
+    chartData.fuzzy.push(0);
+    if (chartLabels.length > 30) {
+      chartLabels.shift();
+      chartData.normal.shift();
+      chartData.dos.shift();
+      chartData.fuzzy.shift();
+    }
+  }
+  const i = chartLabels.length - 1;
+  if (type === 'Normal') chartData.normal[i]++;
+  else if (type === 'DoS') chartData.dos[i]++;
+  else if (type === 'Fuzzy') chartData.fuzzy[i]++;
+  trafficChart.update('none');
+}
+
+// ── Stats update ────────────────────────────────
+function updateStats(d) {
+  const t = Math.max(d.total, 1);
+  setText('t-total',  d.total);
+  setText('t-normal', d.normal);
+  setText('t-dos',    d.dos);
+  setText('t-fuzzy',  d.fuzzy);
+  setWidth('t-normal-bar', d.normal/t*100);
+  setWidth('t-dos-bar',    d.dos/t*100);
+  setWidth('t-fuzzy-bar',  d.fuzzy/t*100);
+}
+
+// ── Table render ────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('traffic-body');
+  if (!tbody) return;
+
+  let filtered = trafficData.filter(r => {
+    const matchType   = filterVal === 'all' || r.type === filterVal;
+    const matchSearch = !searchVal || r.can_id.toLowerCase().includes(searchVal) || r.type.toLowerCase().includes(searchVal);
+    return matchType && matchSearch;
+  });
+
+  setText('log-count', filtered.length + ' messages');
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-txt">No matching traffic</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((t, i) => {
+    const rowCls  = t.type === 'DoS' ? 'tr-dos' : t.type === 'Fuzzy' ? 'tr-fuzzy' : 'tr-normal';
+    const typeBdg = t.type === 'Normal' ? 'bdg-green' : t.type === 'DoS' ? 'bdg-red' : 'bdg-amber';
+    const actBdg  = t.action === 'BLOCKED' ? 'bdg-red' : 'bdg-green';
+    const sevBdg  = t.severity === 'Critical' ? 'bdg-purple' : t.severity === 'High' ? 'bdg-red' : t.severity === 'None' ? 'bdg-gray' : 'bdg-amber';
+    const isNew   = i === 0 && t.type !== 'Normal' ? 'tr-attack-new' : '';
+    return `
+      <tr class="log-row ${rowCls} ${isNew}" data-type="${t.type}">
+        <td class="mono" style="color:var(--txt2)">${filtered.length - i}</td>
+        <td class="mono" style="color:var(--txt2)">${t.time}</td>
+        <td class="mono" style="color:var(--cyan)">${t.can_id}</td>
+        <td><span class="bdg ${typeBdg}">${t.type}</span></td>
+        <td class="mono" style="color:var(--cyan)">${t.latency}ms</td>
+        <td><span class="bdg ${actBdg}">${t.action}</span></td>
+        <td><span class="bdg ${sevBdg}">${t.severity}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+// ── Main update loop ────────────────────────────────
+let prevCanId = '';
+setInterval(() => {
+  fetch('/api/status')
+    .then(r => r.json())
+    .then(d => {
+      updateStats(d);
+
+      if (!isPaused && d.can_id !== '--' && d.can_id !== prevCanId) {
+        prevCanId = d.can_id;
+        const entry = {
+          time:    d.time,
+          can_id:  d.can_id,
+          type:    d.ml_label !== '-' ? d.ml_label : 'Normal',
+          latency: d.detection_time,
+          action:  d.ips_status,
+          severity: d.severity || 'None'
+        };
+        trafficData.unshift(entry);
+        if (trafficData.length > 100) trafficData.pop();
+        updateChart(entry.type, entry.time);
+
+        // msg/min counter
+        msgCount++;
+        const now = Date.now();
+        lastMinData.push(now);
+        lastMinData = lastMinData.filter(t => now - t < 60000);
+        setText('msg-rate', lastMinData.length + ' msg/min');
+      }
+
+      renderTable();
+    })
+    .catch(() => {});
+}, 2000);
+
+// ── Filter / Pause ────────────────────────────────
+function filterRows(val) { searchVal = val.toLowerCase(); renderTable(); }
+function filterByType(val) { filterVal = val; renderTable(); }
+
+function togglePause() {
+  isPaused = !isPaused;
+  const btn = document.getElementById('pause-btn');
+  const txt = document.getElementById('pause-txt');
+  const ico = document.getElementById('pause-icon');
+  btn.classList.toggle('paused', isPaused);
+  txt.textContent = isPaused ? 'Resume' : 'Pause';
+  ico.innerHTML   = isPaused
+    ? '<polygon points="4,2 13,8 4,14"/>'
+    : '<rect x="3" y="3" width="4" height="10" rx="1"/><rect x="9" y="3" width="4" height="10" rx="1"/>';
+}
+</script>
+</body>
+</html>
