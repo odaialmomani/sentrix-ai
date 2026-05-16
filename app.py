@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import datetime
-import random as _random
 import joblib
 import pandas as pd
 import time
@@ -70,7 +69,6 @@ def ctx():
     )
 
 # ===== ROUTES =====
-
 @app.route("/", methods=["GET","POST"])
 def login():
     error = ""
@@ -115,19 +113,15 @@ def analytics():
                            stats=stats, logs=attack_log,
                            accuracy=acc, latest=latest_data)
 
-# 🔥 NEW SIEM PAGE (ADMIN ONLY)
 @app.route("/siem")
 @admin_only
 def siem():
     acc = round(stats["correct"] / max(stats["total"], 1) * 100, 1)
-    return render_template(
-        "siem.html",
-        **ctx(),
-        stats=stats,
-        logs=attack_log,
-        accuracy=acc,
-        latest=latest_data
-    )
+    return render_template("siem.html", **ctx(),
+                           stats=stats,
+                           logs=attack_log,
+                           accuracy=acc,
+                           latest=latest_data)
 
 @app.route("/admin")
 @admin_only
@@ -142,6 +136,7 @@ def about():
 
 # ===== API =====
 
+# 🔥 هذا أهم واحد (لا تلمسه)
 @app.route("/api/status")
 @auth
 def api_status():
@@ -172,9 +167,9 @@ def api_status():
         stats["total"] += 1
         det_times.append(det)
 
-        if pred == "Normal":   stats["normal"] += 1
-        elif pred == "DoS":    stats["dos"] += 1
-        elif pred == "Fuzzy":  stats["fuzzy"] += 1
+        if pred == "Normal": stats["normal"] += 1
+        elif pred == "DoS": stats["dos"] += 1
+        elif pred == "Fuzzy": stats["fuzzy"] += 1
 
         if pred == real:
             stats["correct"] += 1
@@ -216,11 +211,12 @@ def api_status():
                 "severity": "None"
             }
 
+        # 🔥 هذا للترافيك
         traffic_log.append({
             "time": ts,
             "can_id": str(cid),
             "type": pred,
-            "detection_time": det,
+            "latency": det,
             "action": "BLOCKED" if pred != "Normal" else "ALLOW",
             "severity": sev(pred) if pred != "Normal" else "None"
         })
@@ -239,6 +235,30 @@ def api_status():
         "running": system_running["status"]
     })
 
+
+# 🔥 API خاص للترافيك
+@app.route("/api/traffic")
+@auth
+def api_traffic():
+    return jsonify({
+        "traffic": list(reversed(traffic_log))
+    })
+
+
+# 🔥 SIEM stats
+@app.route("/api/siem_stats")
+@auth
+def siem_stats():
+    dos = sum(1 for x in attack_log if x["type"] == "DoS")
+    fuzzy = sum(1 for x in attack_log if x["type"] == "Fuzzy")
+
+    return jsonify({
+        "total": len(attack_log),
+        "dos": dos,
+        "fuzzy": fuzzy
+    })
+
+
 @app.route("/api/start", methods=["POST"])
 @admin_only
 def api_start():
@@ -255,9 +275,19 @@ def api_stop():
 @admin_only
 def api_reset():
     global attack_log, det_times, traffic_log
+
     stats.update(total=0, normal=0, dos=0, fuzzy=0, correct=0, blocked=0)
     attack_log, det_times, traffic_log = [], [], []
+
     return jsonify({"ok": True})
+
+
+# 🔥 صفحة الترافيك
+@app.route('/traffic')
+@auth
+def traffic():
+    return render_template('traffic.html', **ctx())
+
 
 # ===== RUN =====
 if __name__ == "__main__":
