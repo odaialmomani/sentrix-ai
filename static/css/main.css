@@ -344,3 +344,76 @@ tbody tr:hover td { background:rgba(255,255,255,.02); }
   .grid-2,.grid-3 { grid-template-columns:1fr; }
   .detail-panel { width:100%; }
 }
+
+/* ===== SIEM TABLE IMPROVEMENTS ===== */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tbl td, .tbl th {
+  padding: 12px 14px;
+}
+
+.tbl tbody tr {
+  transition: all .15s;
+}
+
+.tbl tbody tr:hover {
+  background: rgba(255,255,255,.04);
+}
+
+/* Attack colors */
+.tr-dos {
+  background: rgba(244,63,94,.08);
+}
+
+.tr-fuzzy {
+  background: rgba(245,158,11,.08);
+}
+
+.tr-dos td {
+  color: #fda4af;
+}
+
+.tr-fuzzy td {
+  color: #fcd34d;
+}
+
+/* ===== SIEM CARDS ===== */
+.chart-wrap {
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: var(--r8);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.chart-title {
+  font-size: 11px;
+  color: var(--txt2);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.ts-card {
+  background: var(--bg4);
+  border: 1px solid var(--line);
+  border-radius: var(--r6);
+  padding: 14px;
+}
+
+.ts-label {
+  font-size: 10px;
+  color: var(--txt2);
+  text-transform: uppercase;
+}
+
+.ts-num {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--white);
+  margin-top: 6px;
+}
+
+

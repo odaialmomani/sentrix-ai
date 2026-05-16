@@ -70,6 +70,7 @@ def ctx():
     )
 
 # ===== ROUTES =====
+
 @app.route("/", methods=["GET","POST"])
 def login():
     error = ""
@@ -91,8 +92,8 @@ def logout():
 @auth
 def dashboard():
     acc = round(stats["correct"] / max(stats["total"], 1) * 100, 1)
-    return render_template("dashboard.html", **ctx(),
-                           stats=stats, latest=latest_data, accuracy=acc)
+    return render_template("dashboard.html", **ctx(), stats=stats,
+                           latest=latest_data, accuracy=acc)
 
 @app.route("/monitor")
 @auth
@@ -114,12 +115,19 @@ def analytics():
                            stats=stats, logs=attack_log,
                            accuracy=acc, latest=latest_data)
 
-# 🔥 NEW TRAFFIC PAGE
-@app.route("/traffic")
-@auth
-def traffic():
-    return render_template("traffic.html", **ctx(),
-                           traffic=list(reversed(traffic_log)))
+# 🔥 NEW SIEM PAGE (ADMIN ONLY)
+@app.route("/siem")
+@admin_only
+def siem():
+    acc = round(stats["correct"] / max(stats["total"], 1) * 100, 1)
+    return render_template(
+        "siem.html",
+        **ctx(),
+        stats=stats,
+        logs=attack_log,
+        accuracy=acc,
+        latest=latest_data
+    )
 
 @app.route("/admin")
 @admin_only
@@ -133,6 +141,7 @@ def about():
     return render_template("about.html", **ctx())
 
 # ===== API =====
+
 @app.route("/api/status")
 @auth
 def api_status():
@@ -172,7 +181,6 @@ def api_status():
 
         if pred != "Normal":
             stats["blocked"] += 1
-
             s = sev(pred)
 
             attack_log.append({
@@ -208,7 +216,6 @@ def api_status():
                 "severity": "None"
             }
 
-        # 🔥 TRAFFIC LOG
         traffic_log.append({
             "time": ts,
             "can_id": str(cid),
@@ -254,4 +261,4 @@ def api_reset():
 
 # ===== RUN =====
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=False)
+    app.run(host="0.0.0.0", port=5001, debug=True)

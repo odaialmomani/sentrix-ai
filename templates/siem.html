@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SIEM — SENTRIX AI</title>
+<link rel="stylesheet" href="/static/css/main.css">
+</head>
+
+<body>
+<div class="app">
+
+{% set active='siem' %}
+{% include 'sidebar.html' %}
+
+<div class="main">
+
+<!-- 🔝 TOP -->
+<div class="topbar">
+  <span class="topbar-title">SIEM Analysis</span>
+</div>
+
+<div class="content">
+
+<!-- 🔥 THREAT INTELLIGENCE -->
+<div class="chart-wrap">
+
+  <div class="chart-title">Threat Intelligence</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+    <div class="ts-card">
+      <div>
+        <div class="ts-label">Threat Level</div>
+        <div class="ts-num" id="threat-level">--</div>
+      </div>
+    </div>
+
+    <div class="ts-card">
+      <div>
+        <div class="ts-label">Attack Pattern</div>
+        <div class="ts-num" id="attack-pattern">--</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:14px">
+    <div class="ts-label">Top Targeted CAN IDs</div>
+    <div id="top-can"></div>
+  </div>
+
+</div>
+
+<!-- 📜 LOG TABLE -->
+<div class="card" style="margin-top:12px">
+  <div class="card-title">Recent Attacks</div>
+
+<table class="tbl">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Time</th>
+        <th>Type</th>
+        <th>CAN ID</th>
+        <th>Severity</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for log in logs %}
+<tr onclick="openDetail({{ loop.index0 }})"
+    style="cursor:pointer"
+    class="{% if log.type == 'DoS' %}tr-dos{% elif log.type == 'Fuzzy' %}tr-fuzzy{% endif %}">
+             <td>{{ loop.index }}</td>
+        <td>{{ log.time }}</td>
+        <td>{{ log.type }}</td>
+        <td>{{ log.can_id }}</td>
+        <td>{{ log.severity }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+
+  </table>
+</div>
+
+</div>
+</div>
+</div>
+
+<!-- 🔥 DETAIL PANEL -->
+<div class="detail-panel" id="detail-panel" style="display:none">
+  <div class="dp-hd">
+    <span>Attack Analysis</span>
+   <button onclick="closeDetail()" style="cursor:pointer">✖</button>
+  </div>
+
+  <div class="dp-body">
+
+    <div class="dp-field">
+      <label>Type</label>
+      <div id="dp-type"></div>
+    </div>
+
+    <div class="dp-field">
+      <label>CAN ID</label>
+      <div id="dp-can"></div>
+    </div>
+
+    <div class="dp-field">
+      <label>Severity</label>
+      <div id="dp-sev"></div>
+    </div>
+
+    <div class="dp-field">
+      <label>AI Explanation</label>
+      <div id="dp-exp"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ✅ SAFE JSON -->
+<script id="logs-data" type="application/json">
+{{ logs | tojson }}
+</script>
+
+<script>
+// ===== DATA =====
+const logs = JSON.parse(
+  document.getElementById("logs-data").textContent || "[]"
+);
+
+// ===== TOP CAN =====
+const canCounts = {};
+logs.forEach(l => {
+  if (l.type !== 'Normal') {
+    canCounts[l.can_id] = (canCounts[l.can_id] || 0) + 1;
+  }
+});
+
+const topCAN = Object.entries(canCounts)
+.sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+// ===== THREAT LEVEL =====
+let threatLevel = "LOW";
+
+const attacks = logs.filter(l => l.type !== "Normal").length;
+const dosCount = logs.filter(l => l.type === "DoS").length;
+
+if (attacks >= 2) threatLevel = "MEDIUM";
+if (dosCount >= 2) threatLevel = "HIGH";
+
+// ===== PATTERN =====
+const dos = logs.filter(l=>l.type==="DoS").length;
+const fuzzy = logs.filter(l=>l.type==="Fuzzy").length;
+
+let pattern = "Normal Traffic";
+
+if (dos >= 1 && dos > fuzzy)
+  pattern = "DoS Attack Detected";
+else if (fuzzy >= 1)
+  pattern = "Fuzzy Injection Activity";
+
+// ===== AI EXPLANATION =====
+function explainAttack(type) {
+  if (type === 'DoS')
+    return "Flooding attack causing denial of service on CAN bus.";
+  if (type === 'Fuzzy')
+    return "Random malformed frames injected to disrupt ECU logic.";
+  return "Normal traffic.";
+}
+
+// ===== RENDER =====
+document.getElementById("threat-level").innerText = threatLevel;
+document.getElementById("attack-pattern").innerText = pattern;
+
+const list = document.getElementById("top-can");
+list.innerHTML = topCAN.length
+? topCAN.map(([id,c]) =>
+  `<div style="display:flex;justify-content:space-between">
+     <span>${id}</span>
+     <span style="color:#f43f5e;font-weight:600">${c}</span>
+   </div>`
+).join('')
+: "No attacks";
+
+
+// ===== DETAIL PANEL =====
+function openDetail(i){
+  const log = logs[i];
+
+  document.getElementById("detail-panel").style.display = "block";
+
+  document.getElementById("dp-type").innerText = log.type;
+  document.getElementById("dp-can").innerText = log.can_id;
+  document.getElementById("dp-sev").innerText = log.severity;
+  document.getElementById("dp-exp").innerText = explainAttack(log.type);
+}
+
+function closeDetail(){
+  document.getElementById("detail-panel").style.display = "none";
+}
+
+</script>
+
+</body>
+</html>

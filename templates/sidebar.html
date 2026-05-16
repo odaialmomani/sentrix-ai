@@ -1,88 +1,52 @@
-<div class="sb">
-  <div class="sb-top">
-    <div class="sb-brand">
-      <svg class="sb-icon" viewBox="0 0 64 64" fill="none">
-        <defs>
-          <linearGradient id="sg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#1d6bf3"/>
-            <stop offset="100%" stop-color="#a855f7"/>
-          </linearGradient>
-        </defs>
-        <path d="M32 3 L58 13 L58 35 C58 49 45 58 32 62 C19 58 6 49 6 35 L6 13 Z" fill="url(#sg)"/>
-        <circle cx="32" cy="32" r="8" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
-        <circle cx="32" cy="32" r="3" fill="white" opacity=".9"/>
-      </svg>
-      <div>
-        <div class="sb-name">SENTRIX AI</div>
-        <div class="sb-ver">v2.0 · CAN IDS/IPS</div>
-      </div>
-    </div>
+<div class="sidebar">
 
-    <div class="sb-status">
-      <div class="sb-dot {{ 'on' if running else 'off' }}" id="sb-run-dot"></div>
-      <span class="sb-status-txt" id="sb-run-txt">
-        {{ 'System Running' if running else 'System Stopped' }}
-      </span>
-    </div>
+  <!-- 🔥 BRAND -->
+  <div class="sidebar-brand">
+    🛡️ SENTRIX AI
   </div>
 
-  <nav class="sb-nav">
-    <div class="sb-section">Monitoring</div>
+  <!-- 🏠 DASHBOARD -->
+  <a href="/dashboard" class="sb-link {{ 'on' if active=='dashboard' }}">
+    <span>Dashboard</span>
+  </a>
 
-    <a href="/dashboard" class="sb-link {{ 'on' if active=='dashboard' }}">
-      <span>Dashboard</span>
-    </a>
+  <!-- 📡 MONITOR -->
+  <a href="/monitor" class="sb-link {{ 'on' if active=='monitor' }}">
+    <span>Live Monitor</span>
+  </a>
 
-    <a href="/monitor" class="sb-link {{ 'on' if active=='monitor' }}">
-      <span>Live Monitor</span>
-    </a>
+  <!-- 📜 LOGS -->
+  <a href="/logs" class="sb-link {{ 'on' if active=='logs' }}">
+    <span>Logs</span>
+  </a>
 
-    <div class="sb-section">Analysis</div>
+  <!-- 📊 ANALYTICS -->
+  <a href="/analytics" class="sb-link {{ 'on' if active=='analytics' }}">
+    <span>Analytics</span>
+  </a>
 
-    <a href="/logs" class="sb-link {{ 'on' if active=='logs' }}">
-      <span>Logs</span>
-      {% if log_count and log_count > 0 %}
-      <span class="badge-count">{{ log_count }}</span>
-      {% endif %}
-    </a>
+  <!-- 🚦 TRAFFIC -->
+  <a href="/traffic" class="sb-link {{ 'on' if active=='traffic' }}">
+    <span>Traffic</span>
+  </a>
 
-    <a href="/analytics" class="sb-link {{ 'on' if active=='analytics' }}">
-      <span>Analytics</span>
-    </a>
+  <!-- 🔥 SIEM (ADMIN ONLY) -->
+  {% if role == 'Admin' %}
+  <a href="/siem" class="sb-link {{ 'on' if active=='siem' }}">
+    <span>SIEM</span>
+  </a>
+  {% endif %}
 
-    <!-- 🔥 NEW TRAFFIC PAGE -->
-    <a href="/traffic" class="sb-link {{ 'on' if active=='traffic' }}">
-      <span>Traffic</span>
-    </a>
+  <!-- ⚙️ ADMIN -->
+  {% if role == 'Admin' %}
+  <a href="/admin" class="sb-link {{ 'on' if active=='admin' }}">
+    <span>Admin</span>
+  </a>
+  {% endif %}
 
-    {% if role == 'Admin' %}
-    <div class="sb-section">Administration</div>
+  <!-- 🚪 LOGOUT -->
+  <a href="/logout" class="sb-link">
+    <span>Logout</span>
+  </a>
 
-    <a href="/admin" class="sb-link {{ 'on' if active=='admin' }}">
-      <span>Admin Panel</span>
-    </a>
-    {% endif %}
-
-    <div class="sb-section">Info</div>
-
-    <a href="/about" class="sb-link {{ 'on' if active=='about' }}">
-      <span>About</span>
-    </a>
-  </nav>
-
-  <div class="sb-bot">
-    <div class="sb-user">
-      <div class="sb-av">{{ user[0]|upper }}</div>
-      <div>
-        <div class="sb-uname">{{ user }}</div>
-        <div class="sb-urole">{{ role }}</div>
-      </div>
-    </div>
-
-    <div class="sb-clock" id="sb-clock-val">--:--:--</div>
-
-    <a href="/logout" class="sb-logout">
-      <span>Sign Out</span>
-    </a>
-  </div>
 </div>
